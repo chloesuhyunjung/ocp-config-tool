@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCP Agent Config Forge</title>
+<style>
+  :root{
+    --ground:#11141b;
+    --panel:#1a1f29;
+    --panel-2:#0e1117;
+    --line:#2a3140;
+    --line-soft:#222836;
+    --ink:#e7eaf0;
+    --muted:#8b94a7;
+    --muted-2:#5c6577;
+    --amber:#f4b740;
+    --amber-dim:#caa24a;
+    --teal:#4fd1c5;
+    --red:#f07a7a;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--amber);}
+
+  /* ---- top bar ---- */
+  .topbar{
+    display:flex;align-items:center;gap:14px;
+    padding:14px 22px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#161b24,#11141b);
+  }
+  .brand{
+    font-family:var(--mono);
+    font-weight:600;letter-spacing:.5px;
+    font-size:15px;
+  }
+  .brand .tick{color:var(--amber);}
+  .brand .dim{color:var(--muted-2);}
+  .ver{
+    font-family:var(--mono);font-size:11px;color:var(--muted);
+    border:1px solid var(--line);border-radius:4px;padding:2px 8px;
+  }
+  .topbar .spacer{flex:1;}
+  .status{
+    font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    display:flex;align-items:center;gap:7px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2);}
+  .dot.ok{background:var(--teal);box-shadow:0 0 8px var(--teal);}
+  .dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber);}
+
+  /* ---- layout ---- */
+  .wrap{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:0;min-height:calc(100vh - 53px);
+  }
+  .form-col{
+    padding:22px 26px 60px;
+    border-right:1px solid var(--line);
+    overflow-y:auto;
+  }
+  .preview-col{
+    position:sticky;top:0;align-self:start;
+    height:calc(100vh - 53px);
+    display:flex;flex-direction:column;
+    background:var(--panel-2);
+  }
+
+  /* ---- form ---- */
+  .section{margin-bottom:26px;}
+  .sec-head{
+    display:flex;align-items:baseline;gap:10px;
+    margin:0 0 14px;
+    padding-bottom:8px;border-bottom:1px solid var(--line-soft);
+  }
+  .sec-num{
+    font-family:var(--mono);font-size:11px;color:var(--amber-dim);
+    border:1px solid var(--line);border-radius:4px;padding:1px 7px;
+  }
+  .sec-title{font-size:13px;font-weight:600;letter-spacing:.3px;}
+  .sec-hint{font-size:11.5px;color:var(--muted);margin-left:auto;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 14px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  label{font-size:11.5px;color:var(--muted);font-weight:500;}
+  label .req{color:var(--amber);}
+  label .ex{color:var(--muted-2);font-family:var(--mono);font-weight:400;}
+  input[type=text], textarea, select{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:12.5px;
+    padding:8px 10px;border-radius:6px;
+    outline:none;width:100%;
+    transition:border-color .12s, box-shadow .12s;
+  }
+  input::placeholder, textarea::placeholder{color:var(--muted-2);}
+  input:focus, textarea:focus, select:focus{
+    border-color:var(--amber);
+    box-shadow:0 0 0 2px rgba(244,183,64,.13);
+  }
+  textarea{resize:vertical;min-height:74px;line-height:1.4;}
+
+  /* segmented toggle */
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+  .seg button{
+    background:transparent;border:0;color:var(--muted);
+    font-family:var(--mono);font-size:12.5px;font-weight:600;
+    padding:8px 18px;cursor:pointer;transition:background .12s,color .12s;
+  }
+  .seg button.active{background:var(--amber);color:#11141b;}
+  .seg button:not(.active):hover{color:var(--ink);}
+
+  .note{
+    font-size:11.5px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-left:2px solid var(--amber);
+    border-radius:6px;padding:8px 11px;margin-top:10px;
+  }
+  .note b{color:var(--amber-dim);}
+
+  /* host cards */
+  .host{
+    border:1px solid var(--line);border-radius:8px;
+    padding:13px 14px;margin-bottom:12px;background:var(--panel);
+  }
+  .host-top{
+    display:flex;align-items:center;gap:9px;margin-bottom:11px;
+  }
+  .role-chip{
+    font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.4px;
+    padding:2px 9px;border-radius:4px;text-transform:uppercase;
+  }
+  .role-chip.master{background:rgba(244,183,64,.16);color:var(--amber);}
+  .role-chip.worker{background:rgba(79,209,197,.14);color:var(--teal);}
+  .host-idx{font-family:var(--mono);font-size:11px;color:var(--muted-2);}
+  .rdv-flag{
+    margin-left:auto;font-family:var(--mono);font-size:10px;
+    color:var(--teal);border:1px solid rgba(79,209,197,.3);
+    border-radius:4px;padding:1px 7px;
+  }
+
+  /* ---- preview ---- */
+  .tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);}
+  .tab{
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    padding:11px 18px;cursor:pointer;border:0;background:transparent;
+    border-bottom:2px solid transparent;transition:color .12s,border-color .12s;
+  }
+  .tab.active{color:var(--ink);border-bottom-color:var(--amber);}
+  .tab .fade{color:var(--muted-2);}
+  .pv-actions{margin-left:auto;display:flex;gap:8px;padding:6px 12px;align-items:center;}
+  .btn{
+    font-family:var(--mono);font-size:11.5px;font-weight:600;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+    padding:6px 13px;border-radius:6px;cursor:pointer;
+    transition:border-color .12s,background .12s,transform .05s;
+  }
+  .btn:hover{border-color:var(--amber);}
+  .btn:active{transform:translateY(1px);}
+  .btn.primary{background:var(--amber);color:#11141b;border-color:var(--amber);}
+  .btn.primary:hover{background:#ffca57;}
+
+  .pre-wrap{flex:1;overflow:auto;position:relative;}
+  pre{
+    margin:0;padding:18px 20px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.62;
+    color:#cdd4e0;white-space:pre;tab-size:2;
+  }
+  pre .key{color:var(--teal);}
+  pre .val{color:#e8d8a8;}
+  pre .dash{color:var(--muted-2);}
+  pre .com{color:var(--muted-2);font-style:italic;}
+  .flash{animation:flash .5s ease;}
+  @keyframes flash{from{background:rgba(244,183,64,.07);}to{background:transparent;}}
+
+  .footbar{
+    border-top:1px solid var(--line);background:var(--panel);
+    padding:9px 16px;font-family:var(--mono);font-size:11px;color:var(--muted);
+    display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  }
+  .footbar .ok{color:var(--teal);}
+  .footbar .warn{color:var(--amber);}
+
+  .hidden{display:none !important;}
+
+  @media (max-width:980px){
+    .wrap{grid-template-columns:1fr;}
+    .form-col{border-right:0;border-bottom:1px solid var(--line);}
+    .preview-col{position:static;height:520px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand"><span class="tick">▍</span> agent-config <span class="dim">/</span> forge</span>
+  <span class="ver">OCP 4.20 · ABI</span>
+  <span class="spacer"></span>
+  <span class="status"><span class="dot" id="statusDot"></span><span id="statusText">입력 대기 중</span></span>
+</div>
+
+<div class="wrap">
+  <!-- ================= FORM ================= -->
+  <div class="form-col">
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">00</span><span class="sec-title">설치 형상</span>
+        <span class="sec-hint">SNO 는 platform:none 자동 적용</span></div>
+      <div class="seg" id="typeSeg">
+        <button data-type="single" class="active">single node</button>
+        <button data-type="multi">multi node</button>
+      </div>
+      <div class="note" id="typeNote"><b>Single Node</b> — master 1 / worker 0 / VIP 없음 / <code>platform: none: {}</code> 자동.</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">01</span><span class="sec-title">클러스터</span></div>
+      <div class="grid2">
+        <div class="field"><label>baseDomain <span class="req">*</span></label>
+          <input type="text" id="baseDomain" placeholder="example.com"></div>
+        <div class="field"><label>cluster name <span class="req">*</span></label>
+          <input type="text" id="clusterName" placeholder="vdu-site-01"></div>
+        <div class="field nodecount hidden"><label>master 개수 <span class="ex">(1 또는 3)</span></label>
+          <input type="text" id="masterCount" value="3"></div>
+        <div class="field nodecount hidden"><label>worker 개수</label>
+          <input type="text" id="workerCount" value="2"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">02</span><span class="sec-title">네트워킹</span></div>
+      <div class="grid3">
+        <div class="field"><label>Pod CIDR <span class="ex">10.128.0.0</span></label>
+          <input type="text" id="podCidr" value="10.128.0.0"></div>
+        <div class="field"><label>Pod prefix <span class="ex">14</span></label>
+          <input type="text" id="podPrefix" value="14"></div>
+        <div class="field"><label>hostPrefix <span class="ex">23</span></label>
+          <input type="text" id="podHostPrefix" value="23"></div>
+        <div class="field"><label>Service CIDR <span class="ex">172.30.0.0</span></label>
+          <input type="text" id="svcCidr" value="172.30.0.0"></div>
+        <div class="field"><label>Service prefix <span class="ex">16</span></label>
+          <input type="text" id="svcPrefix" value="16"></div>
+        <div class="field"></div>
+        <div class="field"><label>Machine CIDR <span class="ex">192.168.226.0</span></label>
+          <input type="text" id="machineCidr" value="192.168.226.0"></div>
+        <div class="field"><label>Machine prefix <span class="ex">24</span></label>
+          <input type="text" id="machinePrefix" value="24"></div>
+        <div class="field"></div>
+      </div>
+    </div>
+
+    <div class="section vip hidden">
+      <div class="sec-head"><span class="sec-num">03</span><span class="sec-title">VIP</span>
+        <span class="sec-hint">multi node 전용</span></div>
+      <div class="grid2">
+        <div class="field"><label>API VIP <span class="req">*</span></label>
+          <input type="text" id="apiVip" placeholder="192.168.226.10"></div>
+        <div class="field"><label>Ingress VIP <span class="req">*</span></label>
+          <input type="text" id="ingressVip" placeholder="192.168.226.11"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">04</span><span class="sec-title">레지스트리 / 미러</span>
+        <span class="sec-hint">폐쇄망 mirror</span></div>
+      <div class="grid2">
+        <div class="field"><label>Registry domain <span class="req">*</span></label>
+          <input type="text" id="registry" placeholder="registry.example.com:5000"></div>
+        <div class="field"><label>Release path <span class="ex">ocp4/openshift4</span></label>
+          <input type="text" id="releasePath" placeholder="ocp4/openshift4"></div>
+        <div class="field full"><label>Registry auth <span class="ex">(auth.json 의 base64 auth 값)</span></label>
+          <input type="text" id="auth" placeholder="bXktdXNlcjpteS1wYXNz..."></div>
+        <div class="field full"><label>CA 인증서 <span class="ex">(certs.d/&lt;registry&gt;/ca.crt 내용 붙여넣기)</span></label>
+          <textarea id="ca" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea></div>
+        <div class="field full"><label>SSH public key <span class="ex">(id_rsa.pub 내용)</span></label>
+          <textarea id="sshKey" placeholder="ssh-rsa AAAA..." style="min-height:54px;"></textarea></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">05</span><span class="sec-title">노드 네트워크</span>
+        <span class="sec-hint">gateway 는 machine 과 같은 서브넷</span></div>
+      <div class="grid2">
+        <div class="field"><label>Gateway (next-hop) <span class="req">*</span></label>
+          <input type="text" id="gateway" placeholder="192.168.226.1"></div>
+        <div class="field"><label>DNS server <span class="req">*</span></label>
+          <input type="text" id="dns" placeholder="192.168.226.1"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">06</span><span class="sec-title">호스트</span>
+        <span class="sec-hint" id="hostHint">총 1 대</span></div>
+      <div id="hosts"></div>
+      <div class="note">첫 번째 <b>master</b> 의 IP 가 <code>rendezvousIP</code> 로 자동 지정돼.
+        root device 는 모르면 비워둬 (생략됨).</div>
+    </div>
+
+  </div>
+
+  <!-- ================= PREVIEW ================= -->
+  <div class="preview-col">
+    <div class="tabs">
+      <button class="tab active" data-pv="install">install-config<span class="fade">.yaml</span></button>
+      <button class="tab" data-pv="agent">agent-config<span class="fade">.yaml</span></button>
+      <div class="pv-actions">
+        <button class="btn" id="copyBtn">copy</button>
+        <button class="btn primary" id="dlBtn">download</button>
+        <button class="btn" id="dlAllBtn">download both</button>
+      </div>
+    </div>
+    <div class="pre-wrap">
+      <pre id="preInstall"></pre>
+      <pre id="preAgent" class="hidden"></pre>
+    </div>
+    <div class="footbar">
+      <span>openshift-install 는 manifest 를 <span class="warn">소모(삭제)</span> 함 → 백업 후 깨끗한 dir 에서 실행</span>
+      <span class="spacer" style="flex:1"></span>
+      <span id="validMsg" class="ok">ready</span>
+    </div>
+  </div>
+</div>
+
+<textarea id="clipFallback" style="position:fixed;left:-9999px;top:0;"></textarea>
+
+<script>
+"use strict";
+
+const state = {
+  type:"single",
+  hosts:[]   // {hostname, role, ifname, mac, ip, disk}
+};
+let activePv = "install";
+
+const $ = id => document.getElementById(id);
+const inputIds = ["baseDomain","clusterName","masterCount","workerCount",
+  "podCidr","podPrefix","podHostPrefix","svcCidr","svcPrefix","machineCidr",
+  "machinePrefix","apiVip","ingressVip","registry","releasePath","auth","ca","sshKey",
+  "gateway","dns"];
+
+function v(id){ return ($(id).value || "").trim(); }
+function counts(){
+  if(state.type==="single") return {m:1,w:0};
+  let m=parseInt(v("masterCount"),10); let w=parseInt(v("workerCount"),10);
+  if(isNaN(m)||m<1) m=1; if(isNaN(w)||w<0) w=0;
+  return {m,w};
+}
+
+/* ---------- host rows ---------- */
+function syncHosts(){
+  const {m,w}=counts();
+  const total=m+w;
+  while(state.hosts.length<total) state.hosts.push({hostname:"",role:"",ifname:"eno1",mac:"",ip:"",disk:""});
+  state.hosts.length=total;
+  state.hosts.forEach((h,i)=>{ h.role = i<m ? "master" : "worker"; });
+  buildHostDOM();
+  $("hostHint").textContent = "총 "+total+" 대";
+}
+function buildHostDOM(){
+  const box=$("hosts"); box.innerHTML="";
+  state.hosts.forEach((h,i)=>{
+    const card=document.createElement("div"); card.className="host";
+    const isRdv = (i===0);
+    card.innerHTML =
+      '<div class="host-top">'+
+        '<span class="role-chip '+h.role+'">'+h.role+'</span>'+
+        '<span class="host-idx">host['+i+']</span>'+
+        (isRdv?'<span class="rdv-flag">rendezvousIP</span>':'')+
+      '</div>'+
+      '<div class="grid3">'+
+        '<div class="field"><label>hostname</label><input type="text" data-f="hostname" placeholder="'+h.role+'-'+i+'"></div>'+
+        '<div class="field"><label>interface</label><input type="text" data-f="ifname" value="'+h.ifname+'"></div>'+
+        '<div class="field"><label>MAC</label><input type="text" data-f="mac" placeholder="00:ef:44:21:e6:a5"></div>'+
+        '<div class="field"><label>static IP</label><input type="text" data-f="ip" placeholder="192.168.226.'+(11+i)+'"></div>'+
+        '<div class="field"><label>root device <span class="ex">opt</span></label><input type="text" data-f="disk" placeholder="/dev/sda"></div>'+
+        '<div class="field"></div>'+
+      '</div>';
+    box.appendChild(card);
+    card.querySelectorAll("input[data-f]").forEach(inp=>{
+      const f=inp.getAttribute("data-f");
+      inp.value = h[f] || "";
+      inp.addEventListener("input",()=>{ h[f]=inp.value.trim(); render(); });
+    });
+  });
+}
+
+/* ---------- generators ---------- */
+function genInstall(){
+  const {m,w}=counts(); const L=[];
+  L.push("apiVersion: v1");
+  L.push("baseDomain: "+v("baseDomain"));
+  L.push("metadata:");
+  L.push("  name: "+v("clusterName"));
+  L.push("controlPlane:");
+  L.push("  hyperthreading: Enabled");
+  L.push("  name: master");
+  L.push("  replicas: "+m);
+  L.push("compute:");
+  L.push("- hyperthreading: Enabled");
+  L.push("  name: worker");
+  L.push("  replicas: "+w);
+  L.push("networking:");
+  L.push("  clusterNetwork:");
+  L.push("  - cidr: "+v("podCidr")+"/"+v("podPrefix"));
+  L.push("    hostPrefix: "+v("podHostPrefix"));
+  L.push("  networkType: OVNKubernetes");
+  L.push("  serviceNetwork:");
+  L.push("  - "+v("svcCidr")+"/"+v("svcPrefix"));
+  L.push("  machineNetwork:");
+  L.push("  - cidr: "+v("machineCidr")+"/"+v("machinePrefix"));
+  if(state.type==="multi"){
+    L.push("platform:");
+    L.push("  baremetal:");
+    L.push("    apiVIPs:");
+    L.push("    - "+v("apiVip"));
+    L.push("    ingressVIPs:");
+    L.push("    - "+v("ingressVip"));
+  } else {
+    L.push("platform:");
+    L.push("  none: {}");
+  }
+  L.push("fips: false");
+  L.push("pullSecret: '{\"auths\":{\""+v("registry")+"\": {\"auth\": \""+v("auth")+"\"}}}'");
+  L.push("sshKey: |");
+  L.push("  "+v("sshKey"));
+  const ca=v("ca");
+  if(ca){
+    L.push("additionalTrustBundle: |");
+    ca.replace(/\r/g,"").split("\n").forEach(l=>L.push("  "+l));
+  }
+  L.push("imageContentSources:");
+  L.push("- mirrors:");
+  L.push("  - "+v("registry")+"/"+v("releasePath")+"/openshift/release");
+  L.push("  source: quay.io/openshift-release-dev/ocp-v4.0-art-dev");
+  L.push("- mirrors:");
+  L.push("  - "+v("registry")+"/"+v("releasePath")+"/openshift/release-images");
+  L.push("  source: quay.io/openshift-release-dev/ocp-release");
+  return L.join("\n")+"\n";
+}
+function genAgent(){
+  const L=[];
+  L.push("apiVersion: v1beta1");
+  L.push("kind: AgentConfig");
+  L.push("metadata:");
+  L.push("  name: "+v("clusterName"));
+  const rdv = state.hosts.length ? (state.hosts[0].ip||"<첫 master IP 입력 필요>") : "";
+  L.push("rendezvousIP: "+rdv);
+  L.push("hosts:");
+  const pfx=v("machinePrefix"), gw=v("gateway"), dns=v("dns");
+  state.hosts.forEach((h,i)=>{
+    L.push("  - hostname: "+(h.hostname||(h.role+"-"+i)));
+    L.push("    role: "+h.role);
+    L.push("    interfaces:");
+    L.push("      - name: "+(h.ifname||"eno1"));
+    L.push("        macAddress: "+(h.mac||""));
+    if(h.disk){
+      L.push("    rootDeviceHints:");
+      L.push("      deviceName: "+h.disk);
+    }
+    L.push("    networkConfig:");
+    L.push("      interfaces:");
+    L.push("        - name: "+(h.ifname||"eno1"));
+    L.push("          type: ethernet");
+    L.push("          state: up");
+    L.push("          mac-address: "+(h.mac||""));
+    L.push("          ipv4:");
+    L.push("            enabled: true");
+    L.push("            address:");
+    L.push("              - ip: "+(h.ip||""));
+    L.push("                prefix-length: "+pfx);
+    L.push("            dhcp: false");
+    L.push("          ipv6:");
+    L.push("            enabled: false");
+    L.push("      dns-resolver:");
+    L.push("        config:");
+    L.push("          server:");
+    L.push("            - "+dns);
+    L.push("      routes:");
+    L.push("        config:");
+    L.push("          - destination: 0.0.0.0/0");
+    L.push("            next-hop-address: "+gw);
+    L.push("            next-hop-interface: "+(h.ifname||"eno1"));
+    L.push("            table-id: 254");
+  });
+  return L.join("\n")+"\n";
+}
+
+/* ---------- highlight ---------- */
+function hl(text){
+  return text.split("\n").map(line=>{
+    let esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const m = esc.match(/^(\s*-?\s*)([\w.\-]+)(:)(.*)$/);
+    if(m){
+      return m[1].replace(/-/g,'<span class="dash">-</span>')
+        +'<span class="key">'+m[2]+'</span>'+m[3]
+        +(m[4]?'<span class="val">'+m[4]+'</span>':'');
+    }
+    return esc.replace(/^(\s*)(-)(.*)$/,'$1<span class="dash">$2</span><span class="val">$3</span>');
+  }).join("\n");
+}
+
+/* ---------- validation ---------- */
+function validate(){
+  const miss=[];
+  if(!v("baseDomain")) miss.push("baseDomain");
+  if(!v("clusterName")) miss.push("clusterName");
+  if(!v("registry")) miss.push("registry");
+  if(!v("gateway")) miss.push("gateway");
+  if(!v("dns")) miss.push("dns");
+  if(state.type==="multi"){
+    if(!v("apiVip")) miss.push("apiVIP");
+    if(!v("ingressVip")) miss.push("ingressVIP");
+    const mc=parseInt(v("masterCount"),10);
+    if(mc!==1 && mc!==3) return {dot:"warn",text:"master 는 1 또는 3 권장 (현재 "+v("masterCount")+")",foot:"warn"};
+  }
+  state.hosts.forEach((h,i)=>{
+    if(!h.mac) miss.push("host["+i+"].MAC");
+    if(!h.ip) miss.push("host["+i+"].IP");
+  });
+  if(miss.length) return {dot:"warn",text:"미입력: "+miss.slice(0,3).join(", ")+(miss.length>3?" +"+(miss.length-3):""),foot:"warn"};
+  return {dot:"ok",text:"생성 완료 — 다운로드 가능",foot:"ok"};
+}
+
+/* ---------- render ---------- */
+let lastInstall="", lastAgent="";
+function render(){
+  const inst=genInstall(), ag=genAgent();
+  const pi=$("preInstall"), pa=$("preAgent");
+  if(inst!==lastInstall){ pi.innerHTML=hl(inst); flash(pi); lastInstall=inst; }
+  if(ag!==lastAgent){ pa.innerHTML=hl(ag); flash(pa); lastAgent=ag; }
+  const r=validate();
+  $("statusDot").className="dot "+r.dot;
+  $("statusText").textContent=r.text;
+  const vm=$("validMsg"); vm.textContent=r.foot==="ok"?"valid":"check inputs"; vm.className=r.foot;
+}
+let flashTO;
+function flash(el){
+  if(activePv==="install" && el.id!=="preInstall") return;
+  if(activePv==="agent" && el.id!=="preAgent") return;
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+}
+
+/* ---------- download / copy ---------- */
+function download(name,text){
+  const blob=new Blob([text],{type:"text/yaml;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function copy(text){
+  const fb=$("clipFallback");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).catch(()=>{ fb.value=text; fb.select(); document.execCommand("copy"); });
+  } else { fb.value=text; fb.select(); document.execCommand("copy"); }
+}
+
+/* ---------- wire up ---------- */
+document.querySelectorAll("#typeSeg button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#typeSeg button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    state.type=b.getAttribute("data-type");
+    const multi=state.type==="multi";
+    document.querySelectorAll(".vip").forEach(e=>e.classList.toggle("hidden",!multi));
+    document.querySelectorAll(".nodecount").forEach(e=>e.classList.toggle("hidden",!multi));
+    $("typeNote").innerHTML = multi
+      ? "<b>Multi Node</b> — master/worker 개수 지정 / VIP 필요 / <code>platform: baremetal</code>."
+      : "<b>Single Node</b> — master 1 / worker 0 / VIP 없음 / <code>platform: none: {}</code> 자동.";
+    syncHosts(); render();
+  });
+});
+inputIds.forEach(id=>{
+  const el=$(id); if(!el) return;
+  el.addEventListener("input",()=>{
+    if(id==="masterCount"||id==="workerCount") syncHosts();
+    render();
+  });
+});
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    activePv=t.getAttribute("data-pv");
+    $("preInstall").classList.toggle("hidden",activePv!=="install");
+    $("preAgent").classList.toggle("hidden",activePv!=="agent");
+  });
+});
+$("copyBtn").addEventListener("click",()=>{
+  copy(activePv==="install"?genInstall():genAgent());
+  const b=$("copyBtn"); const o=b.textContent; b.textContent="copied"; setTimeout(()=>b.textContent=o,1100);
+});
+$("dlBtn").addEventListener("click",()=>{
+  if(activePv==="install") download("install-config.yaml",genInstall());
+  else download("agent-config.yaml",genAgent());
+});
+$("dlAllBtn").addEventListener("click",()=>{
+  download("install-config.yaml",genInstall());
+  setTimeout(()=>download("agent-config.yaml",genAgent()),350);
+});
+
+/* init */
+syncHosts();
+render();
+</script>
+</body>
+</html>
