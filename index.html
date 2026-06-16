@@ -203,7 +203,7 @@ const $=id=>document.getElementById(id);
 const inputIds=["baseDomain","clusterName","masterCount","workerCount","podCidr","podPrefix","podHostPrefix","svcCidr","svcPrefix","machineCidr","machinePrefix","gateway","dns","apiVip","ingressVip","registry","releasePath","auth","ca","sshKey","apiVersion"];
 function v(id){return ($(id).value||"").trim();}
 function counts(){ if(state.type==="single")return{m:1,w:0}; let m=parseInt(v("masterCount"),10),w=parseInt(v("workerCount"),10); if(isNaN(m)||m<1)m=1; if(isNaN(w)||w<0)w=0; return{m,w}; }
-function newPhysical(){return{kind:"physical",name:"eno8303np0",mac:"",hasIP:false,ip:"",prefix:""};}
+function newPhysical(){return{kind:"physical",name:"eno8303np0",mac:"",hasIP:true,ip:"",prefix:""};}
 function newHost(){return{hostname:"",role:"",disk:"",ifaces:[newPhysical()]};}
 function defPrefix(){return state.fam==="ipv6"?"64":(v("machinePrefix")||"24");}
 function syncHosts(){const {m,w}=counts(),total=m+w;while(state.hosts.length<total)state.hosts.push(newHost());state.hosts.length=total;state.hosts.forEach((h,i)=>h.role=i<m?"master":"worker");buildHosts();$("hostHint").textContent="총 "+total+" 대";}
@@ -243,11 +243,11 @@ function buildIface(h,f,fi){
   const x=document.createElement("button");x.className="xbtn";x.textContent="삭제";
   x.addEventListener("click",()=>{h.ifaces.splice(fi,1);if(h.ifaces.length===0)h.ifaces.push(newPhysical());buildHosts();render();});
   head.append(pill,sel,ipflag,sp,x);wrap.appendChild(head);
-  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음. 하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여. IP 는 항상 부여됨.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능. ⚠️ bond 멤버 NIC 는 physical 카드로 따로 추가 불필요 — 멤버 칸에 넣으면 자동 반영."};
+  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. IP 는 항상 부여됨. 하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여. IP 는 항상 부여됨.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능. ⚠️ bond 멤버 NIC 는 physical 카드로 따로 추가 불필요 — 멤버 칸에 넣으면 자동 반영."};
   const hint=document.createElement("div");hint.className="iface-hint";hint.innerHTML=hints[f.kind]||"";wrap.appendChild(hint);
   const body=document.createElement("div");body.className="grid3";
   body.appendChild(mkField(f,"interface name","name",f.kind==="vlan"?"bond0.1202":(f.kind==="bond"?"bond0":"eno8303np0")));
-  if(f.kind==="physical"){body.appendChild(mkField(f,"MAC address","mac","C4:70:BD:E3:F1:52"));body.appendChild(ipToggleField(f));}
+  if(f.kind==="physical"){body.appendChild(mkField(f,"MAC address","mac","C4:70:BD:E3:F1:52"));f.hasIP=true;}
   if(f.kind==="vlan"){body.appendChild(mkField(f,"base-iface","base","bond0 / eno8303np0"));body.appendChild(mkField(f,"vlan id","vlanId","1202"));f.hasIP=true;}
   if(f.kind==="bond"){body.appendChild(mkField(f,"mode","mode","active-backup / 802.3ad"));body.appendChild(mkField(f,"miimon","miimon","100"));}
   wrap.appendChild(body);
@@ -263,7 +263,7 @@ function buildIface(h,f,fi){
 }
 function convertIface(f,kind){
   f.kind=kind;
-  if(kind==="physical"){f.hasIP=f.hasIP||false;if(f.mac===undefined)f.mac="";delete f.base;delete f.vlanId;delete f.mode;delete f.miimon;delete f.members;}
+  if(kind==="physical"){f.hasIP=true;if(f.mac===undefined)f.mac="";delete f.base;delete f.vlanId;delete f.mode;delete f.miimon;delete f.members;}
   if(kind==="vlan"){f.hasIP=true;if(f.base===undefined)f.base="bond0";if(f.vlanId===undefined)f.vlanId="";delete f.mac;delete f.mode;delete f.miimon;delete f.members;}
   if(kind==="bond"){if(f.mode===undefined)f.mode="active-backup";if(f.miimon===undefined)f.miimon="100";if(!f.members)f.members=[{name:"",mac:""},{name:"",mac:""}];f.hasIP=false;delete f.base;delete f.vlanId;delete f.mac;}
   if(f.ip===undefined)f.ip="";if(f.prefix===undefined)f.prefix="";
