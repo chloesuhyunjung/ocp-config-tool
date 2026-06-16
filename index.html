@@ -236,14 +236,14 @@ function buildIface(h,f,fi){
   const wrap=document.createElement("div");wrap.className="iface";
   const head=document.createElement("div");head.className="iface-top";
   const pill=document.createElement("span");pill.className="type-pill "+f.kind;pill.textContent=f.kind;
-  const sel=document.createElement("select");["physical","vlan","bond"].forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;if(t===f.kind)o.selected=true;sel.appendChild(o);});
+  const hasPhysical=h.ifaces.filter((_,idx)=>idx!==fi).some(x=>x.kind==="physical");const sel=document.createElement("select");["physical","vlan","bond"].forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;if(t===f.kind)o.selected=true;if(t==="physical"&&hasPhysical&&f.kind!=="physical"){o.disabled=true;o.textContent="physical (이미 추가됨)";}sel.appendChild(o);});
   sel.addEventListener("change",()=>{convertIface(f,sel.value);buildHosts();render();});
   const ipflag=document.createElement("span");ipflag.className="ip-flag";ipflag.textContent=f.hasIP?"● IP":"";
   const sp=document.createElement("span");sp.className="spacer";
   const x=document.createElement("button");x.className="xbtn";x.textContent="삭제";
   x.addEventListener("click",()=>{h.ifaces.splice(fi,1);if(h.ifaces.length===0)h.ifaces.push(newPhysical());buildHosts();render();});
   head.append(pill,sel,ipflag,sp,x);wrap.appendChild(head);
-  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음. 하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능. ⚠️ bond 멤버 NIC 는 physical 카드로 따로 추가 불필요 — 멤버 칸에 넣으면 자동 반영."};
+  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음. 하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여. IP 는 항상 부여됨.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능. ⚠️ bond 멤버 NIC 는 physical 카드로 따로 추가 불필요 — 멤버 칸에 넣으면 자동 반영."};
   const hint=document.createElement("div");hint.className="iface-hint";hint.innerHTML=hints[f.kind]||"";wrap.appendChild(hint);
   const body=document.createElement("div");body.className="grid3";
   body.appendChild(mkField(f,"interface name","name",f.kind==="vlan"?"bond0.1202":(f.kind==="bond"?"bond0":"eno8303np0")));
@@ -255,7 +255,8 @@ function buildIface(h,f,fi){
     const sl=document.createElement("div");sl.className="sublabel";sl.textContent="bond 멤버 (실제 NIC 이름 + MAC)";wrap.appendChild(sl);
     f.members.forEach((mem,mi)=>{const r=document.createElement("div");r.className="row";const n=document.createElement("input");n.type="text";n.placeholder="ens1f0np0";n.value=mem.name||"";n.addEventListener("input",()=>{mem.name=n.value.trim();render();});const m=document.createElement("input");m.type="text";m.placeholder="C4:70:BD:E3:F1:52";m.value=mem.mac||"";m.addEventListener("input",()=>{mem.mac=m.value.trim();render();});const x2=document.createElement("button");x2.className="xbtn";x2.textContent="–";x2.addEventListener("click",()=>{f.members.splice(mi,1);if(f.members.length===0)f.members.push({name:"",mac:""});buildHosts();render();});r.append(n,m,x2);wrap.appendChild(r);});
     const ab=document.createElement("button");ab.className="addbtn small";ab.textContent="+ 멤버 추가";ab.addEventListener("click",()=>{f.members.push({name:"",mac:""});buildHosts();render();});wrap.appendChild(ab);
-    const ipt=document.createElement("div");ipt.className="grid3";ipt.style.marginTop="10px";ipt.appendChild(ipToggleField(f));ipt.appendChild(document.createElement("div"));ipt.appendChild(document.createElement("div"));wrap.appendChild(ipt);
+    // bond 는 IP 항상 없음 — 드롭다운 제거, hasIP 강제 false
+    f.hasIP=false;
   }
   if(f.hasIP){const ipg=document.createElement("div");ipg.className="grid3";ipg.style.marginTop="10px";ipg.appendChild(mkField(f,"static IP","ip",state.fam==="ipv6"?"2001:268:8071:54b2:0001::3":"192.168.226.11"));ipg.appendChild(mkField(f,"prefix","prefix",state.fam==="ipv6"?"64":"24"));ipg.appendChild(document.createElement("div"));wrap.appendChild(ipg);}
   return wrap;
@@ -264,7 +265,7 @@ function convertIface(f,kind){
   f.kind=kind;
   if(kind==="physical"){f.hasIP=f.hasIP||false;if(f.mac===undefined)f.mac="";delete f.base;delete f.vlanId;delete f.mode;delete f.miimon;delete f.members;}
   if(kind==="vlan"){f.hasIP=true;if(f.base===undefined)f.base="bond0";if(f.vlanId===undefined)f.vlanId="";delete f.mac;delete f.mode;delete f.miimon;delete f.members;}
-  if(kind==="bond"){if(f.mode===undefined)f.mode="active-backup";if(f.miimon===undefined)f.miimon="100";if(!f.members)f.members=[{name:"",mac:""},{name:"",mac:""}];f.hasIP=f.hasIP||false;delete f.base;delete f.vlanId;delete f.mac;}
+  if(kind==="bond"){if(f.mode===undefined)f.mode="active-backup";if(f.miimon===undefined)f.miimon="100";if(!f.members)f.members=[{name:"",mac:""},{name:"",mac:""}];f.hasIP=false;delete f.base;delete f.vlanId;delete f.mac;}
   if(f.ip===undefined)f.ip="";if(f.prefix===undefined)f.prefix="";
 }
 function genInstall(){
