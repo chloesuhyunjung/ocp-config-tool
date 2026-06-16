@@ -175,7 +175,8 @@
     <div class="section">
       <div class="sec-head"><span class="sec-num">07</span><span class="sec-title">호스트 / 인터페이스</span><span class="sec-hint" id="hostHint">총 1 대</span></div>
       <div class="note">타입: <b>physical</b>(물리 NIC) · <b>vlan</b>(IP 부여, base-iface 위) · <b>bond</b>(멤버 NIC 묶음).
-        bond 멤버는 <b>실제 NIC 이름+MAC</b> → 상단 <code>interfaces:</code> 자동 반영. 첫 master IP = <code>rendezvousIP</code>.</div>
+        bond 멤버는 <b>실제 NIC 이름+MAC</b> → 상단 <code>interfaces:</code> 자동 반영. 첫 master IP = <code>rendezvousIP</code>.
+        하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.</div>
       <div id="hosts"></div>
     </div>
   </div>
@@ -242,7 +243,7 @@ function buildIface(h,f,fi){
   const x=document.createElement("button");x.className="xbtn";x.textContent="삭제";
   x.addEventListener("click",()=>{h.ifaces.splice(fi,1);if(h.ifaces.length===0)h.ifaces.push(newPhysical());buildHosts();render();});
   head.append(pill,sel,ipflag,sp,x);wrap.appendChild(head);
-  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능."};
+  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음. 하나의 호스트는 하나의 physical interface만 설정, bond interface 추가 시 자동 반영.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능. ⚠️ bond 멤버 NIC 는 physical 카드로 따로 추가 불필요 — 멤버 칸에 넣으면 자동 반영."};
   const hint=document.createElement("div");hint.className="iface-hint";hint.innerHTML=hints[f.kind]||"";wrap.appendChild(hint);
   const body=document.createElement("div");body.className="grid3";
   body.appendChild(mkField(f,"interface name","name",f.kind==="vlan"?"bond0.1202":(f.kind==="bond"?"bond0":"eno8303np0")));
@@ -284,7 +285,7 @@ function genInstall(){
   return L.join("\n")+"\n";
 }
 function ipIface(h){return h.ifaces.find(f=>f.hasIP&&f.ip)||h.ifaces.find(f=>f.hasIP)||null;}
-function topInterfaces(h){const out=[];h.ifaces.forEach(f=>{if(f.kind==="physical")out.push({name:f.name,mac:f.mac});if(f.kind==="bond")(f.members||[]).forEach(m=>out.push({name:m.name,mac:m.mac}));});return out;}
+function topInterfaces(h){const bondMemberNames=new Set();h.ifaces.forEach(f=>{if(f.kind==="bond")(f.members||[]).filter(m=>m.name).forEach(m=>bondMemberNames.add(m.name));});const out=[];const seen=new Set();h.ifaces.forEach(f=>{if(f.kind==="physical"&&!bondMemberNames.has(f.name)){if(!seen.has(f.name)){seen.add(f.name);out.push({name:f.name,mac:f.mac});}}if(f.kind==="bond")(f.members||[]).filter(m=>m.name).forEach(m=>{if(!seen.has(m.name)){seen.add(m.name);out.push({name:m.name,mac:m.mac});}});});return out;}
 function emitIP(L,f){
   const pfx=f.prefix||defPrefix();
   if(state.fam==="ipv6"){
