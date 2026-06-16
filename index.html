@@ -214,7 +214,7 @@ function buildHosts(){
     top.innerHTML='<span class="role-chip '+h.role+'">'+h.role+'</span><span class="host-idx">host['+hi+']</span>'+(hi===0?'<span class="rdv-flag">rendezvousIP</span>':'')+'<span class="spacer"></span>';
     card.appendChild(top);
     const basic=document.createElement("div");basic.className="grid3";
-    basic.innerHTML='<div class="field"><label>hostname</label><input type="text" data-h="hostname" placeholder="'+h.role+(hi+1)+'.'+(v("clusterName")||"cluster")+'.'+(v("baseDomain")||"local")+'"></div><div class="field"><label>root device <span class="ex">opt</span></label><input type="text" data-h="disk" placeholder="/dev/sda"></div><div class="field"></div>';
+    basic.innerHTML='<div class="field"><label>hostname</label><input type="text" data-h="hostname" placeholder="'+h.role+(hi+1)+'"></div><div class="field"><label>root device <span class="ex">optional — leave blank to skip</span></label><input type="text" data-h="disk" placeholder="/dev/sda"></div><div class="field"></div>';
     card.appendChild(basic);
     basic.querySelector('[data-h="hostname"]').value=h.hostname||"";
     basic.querySelector('[data-h="disk"]').value=h.disk||"";
