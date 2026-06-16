@@ -68,6 +68,8 @@
   .type-pill.bond{background:rgba(79,209,197,.13);color:var(--teal);}
   .iface select{width:auto;padding:4px 8px;font-size:11.5px;}
   .iface-top .spacer{flex:1;}
+  .iface-hint{font-size:11px;color:var(--muted-2);margin-bottom:10px;padding:0 2px;}
+  .iface-hint b{color:var(--muted);}
   .ip-flag{font-family:var(--mono);font-size:10px;color:var(--teal);}
   .addbtn{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--amber);background:transparent;border:1px dashed var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;transition:border-color .12s,color .12s;}
   .addbtn:hover{border-color:var(--amber);}
@@ -172,9 +174,9 @@
     </div>
     <div class="section">
       <div class="sec-head"><span class="sec-num">07</span><span class="sec-title">호스트 / 인터페이스</span><span class="sec-hint" id="hostHint">총 1 대</span></div>
-      <div id="hosts"></div>
       <div class="note">타입: <b>physical</b>(물리 NIC) · <b>vlan</b>(IP 부여, base-iface 위) · <b>bond</b>(멤버 NIC 묶음).
         bond 멤버는 <b>실제 NIC 이름+MAC</b> → 상단 <code>interfaces:</code> 자동 반영. 첫 master IP = <code>rendezvousIP</code>.</div>
+      <div id="hosts"></div>
     </div>
   </div>
   <div class="preview-col">
@@ -240,6 +242,8 @@ function buildIface(h,f,fi){
   const x=document.createElement("button");x.className="xbtn";x.textContent="삭제";
   x.addEventListener("click",()=>{h.ifaces.splice(fi,1);if(h.ifaces.length===0)h.ifaces.push(newPhysical());buildHosts();render();});
   head.append(pill,sel,ipflag,sp,x);wrap.appendChild(head);
+  const hints={physical:"<b>physical</b> — 물리 NIC. VLAN / bond 의 받침대 역할. 보통 IP 없음.",vlan:"<b>vlan</b> — base-iface 위에 얹힘. 실제 IP 는 여기에 부여.",bond:"<b>bond</b> — 멤버 NIC 여러 개를 하나로 묶음. 그 위에 VLAN 을 얹어서 IP 부여 가능."};
+  const hint=document.createElement("div");hint.className="iface-hint";hint.innerHTML=hints[f.kind]||"";wrap.appendChild(hint);
   const body=document.createElement("div");body.className="grid3";
   body.appendChild(mkField(f,"interface name","name",f.kind==="vlan"?"bond0.1202":(f.kind==="bond"?"bond0":"eno8303np0")));
   if(f.kind==="physical"){body.appendChild(mkField(f,"MAC address","mac","C4:70:BD:E3:F1:52"));body.appendChild(ipToggleField(f));}
